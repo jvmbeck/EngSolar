@@ -1,43 +1,41 @@
 <template>
-  <q-page class="row items-center justify-evenly">
-    <example-component
-      title="Example component"
-      active
-      :todos="todos"
-      :meta="meta"
-    ></example-component>
+  <q-page v-if="!userStore.loading" class="row items-center justify-evenly">
+    <!-- Your content here, user is guaranteed to be loaded -->
+    <div v-if="userStore.user">
+      Welcome, {{ userStore.user.name }}! You are a {{ userStore.user.role }}
+    </div>
+    <q-btn label="logout" @click="logout"></q-btn>
+  </q-page>
+  <q-page v-else class="row items-center justify-center">
+    <q-spinner />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { Todo, Meta } from 'components/models';
-import ExampleComponent from 'components/ExampleComponent.vue';
+import { useUserStore } from 'src/stores/user-store';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 
-const todos = ref<Todo[]>([
-  {
-    id: 1,
-    content: 'ct1',
-  },
-  {
-    id: 2,
-    content: 'ct2',
-  },
-  {
-    id: 3,
-    content: 'ct3',
-  },
-  {
-    id: 4,
-    content: 'ct4',
-  },
-  {
-    id: 5,
-    content: 'ct5',
-  },
-]);
+const router = useRouter();
+const userStore = useUserStore();
+const $q = useQuasar();
 
-const meta = ref<Meta>({
-  totalCount: 1200,
-});
+async function logout() {
+  try {
+    await userStore.logout();
+    await router.push('/login');
+    $q.notify({
+      progress: true,
+      type: 'positive',
+      message: 'Logout bem sucedido!',
+    });
+  } catch (error) {
+    console.error('Logout failed:', error);
+    $q.notify({
+      progress: true,
+      type: 'negative',
+      message: 'Erro ao fazer logout.',
+    });
+  }
+}
 </script>
