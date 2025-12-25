@@ -19,7 +19,7 @@
       />
       <div>
         <q-btn label="Acessar" type="submit" color="primary" />
-        <q-btn label="Registar nova conta" type="reset" color="secondary" to="/register" />
+        <q-btn label="Registar nova conta" type="reset" color="secondary" to="/auth/register" />
       </div>
     </q-form>
   </div>
@@ -47,7 +47,10 @@ async function onSubmit() {
       type: 'positive',
       message: 'Login bem sucedido!',
     });
-    await router.push('/');
+
+    // Redirect based on role
+    const defaultPath = userStore.user?.role === 'admin' ? '/admin' : '/client';
+    await router.push(defaultPath);
   } catch (err) {
     console.log(err);
     $q.notify({
