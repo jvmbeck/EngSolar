@@ -40,7 +40,7 @@ export async function registerUser(
 }
 
 /**
- * Login and fetch user profile
+ * Login user with email and password
  */
 export async function loginUser(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(auth, email, password);
