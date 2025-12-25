@@ -44,25 +44,41 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     }
 
     const isAuthenticated = userStore.isAuthenticated;
+    const userRole = userStore.user?.role;
     const requiresAuth = to.meta.requiresAuth;
+    const requiredRole = to.meta.requiredRole as string | undefined;
 
-    // User is authenticated
-    if (isAuthenticated) {
-      // Redirect from login/register to index
-      if (to.path === '/login' || to.path === '/register') {
-        next('/');
-      } else {
-        next();
+    // If route requires authentication
+    if (requiresAuth) {
+      if (!isAuthenticated) {
+        // Not authenticated, redirect to login
+        next('/auth/login');
+        return;
       }
-    } else {
-      // User is not authenticated
-      if (requiresAuth) {
-        // Redirect to login if trying to access protected route
-        next('/login');
-      } else {
-        next();
+
+      // Check role-based access
+      if (requiredRole && userRole !== requiredRole) {
+        // User doesn't have the required role, redirect to their dashboard
+        const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+        next(defaultPath);
+        return;
       }
     }
+
+    // If user is authenticated and tries to access auth pages, redirect to dashboard
+    if (isAuthenticated && (to.path === '/auth/login' || to.path === '/auth/register')) {
+      const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+      next(defaultPath);
+      return;
+    }
+
+    // If user is not authenticated and tries to access root, redirect to login
+    if (!isAuthenticated && to.path === '/') {
+      next('/auth/login');
+      return;
+    }
+
+    next();
   });
 
   return Router;

@@ -23,7 +23,7 @@ const $q = useQuasar();
 async function logout() {
   try {
     await userStore.logout();
-    await router.push('/login');
+    await router.push('auth/login');
     $q.notify({
       progress: true,
       type: 'positive',

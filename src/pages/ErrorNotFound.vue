@@ -10,7 +10,7 @@
         color="white"
         text-color="blue"
         unelevated
-        to="/"
+        to="/auth/login"
         label="Go Home"
         no-caps
       />
