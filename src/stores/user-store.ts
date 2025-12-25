@@ -17,9 +17,15 @@ export const useUserStore = defineStore('user', () => {
   async function login(email: string, password: string) {
     loading.value = true;
     error.value = null;
+    authReady.value = false;
 
     try {
       await loginUser(email, password);
+
+      // Wait for authReady to be set to true (when user profile is fetched)
+      while (!authReady.value) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
     } catch (err) {
       error.value = 'Invalid email or password';
       throw err;
