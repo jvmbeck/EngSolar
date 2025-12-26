@@ -34,19 +34,31 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to, from, next) => {
+  Router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore();
 
-    // Wait for auth to finish checking
-    if (!userStore.authReady) {
-      next();
-      return;
+    // Wait briefly for auth to finish checking (avoid early navigation)
+    const start = Date.now();
+    while (!userStore.authReady && Date.now() - start < 3000) {
+      await new Promise((r) => setTimeout(r, 50));
     }
 
     const isAuthenticated = userStore.isAuthenticated;
     const userRole = userStore.user?.role;
     const requiresAuth = to.meta.requiresAuth;
     const requiredRole = to.meta.requiredRole as string | undefined;
+
+    // If root is requested, redirect to appropriate place once auth is known
+    if (to.path === '/') {
+      if (!isAuthenticated) {
+        next('/auth/login');
+        return;
+      }
+
+      const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+      next(defaultPath);
+      return;
+    }
 
     // If route requires authentication
     if (requiresAuth) {
