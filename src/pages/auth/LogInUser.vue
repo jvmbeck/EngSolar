@@ -49,7 +49,7 @@ async function onSubmit() {
     });
 
     // Redirect based on role
-    const defaultPath = userStore.user?.role === 'admin' ? '/admin' : '/client';
+    const defaultPath = userStore.user?.role === 'admin' ? '/admin' : '/client/clientProjects';
     await router.push(defaultPath);
   } catch (err) {
     console.log(err);
