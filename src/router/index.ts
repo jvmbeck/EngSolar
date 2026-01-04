@@ -55,7 +55,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
         return;
       }
 
-      const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+      const defaultPath = userRole === 'admin' ? '/admin' : '/client/clientProjects';
       next(defaultPath);
       return;
     }
@@ -71,7 +71,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       // Check role-based access
       if (requiredRole && userRole !== requiredRole) {
         // User doesn't have the required role, redirect to their dashboard
-        const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+        const defaultPath = userRole === 'admin' ? '/admin' : '/client/clientProjects';
         next(defaultPath);
         return;
       }
@@ -79,7 +79,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
     // If user is authenticated and tries to access auth pages, redirect to dashboard
     if (isAuthenticated && (to.path === '/auth/login' || to.path === '/auth/register')) {
-      const defaultPath = userRole === 'admin' ? '/admin' : '/client';
+      const defaultPath = userRole === 'admin' ? '/admin' : '/client/clientProjects';
       next(defaultPath);
       return;
     }
