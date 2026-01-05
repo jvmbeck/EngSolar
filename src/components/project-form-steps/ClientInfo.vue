@@ -1,49 +1,85 @@
 <template>
   <div>
     <q-form @submit.prevent>
-      <q-input v-model="local.clientName" label="Client name" outlined dense />
+      <!-- Required Fields -->
+      <q-input v-model="local.clientName" label="Nome do Cliente" outlined dense required />
       <q-input
         v-model="local.clientEmail"
-        label="Client email"
+        label="Email do Cliente"
         type="email"
         outlined
         dense
         class="q-mt-sm"
+        required
       />
+      <q-input v-model="local.CPF" label="CPF" outlined dense class="q-mt-sm" required />
+
+      <!-- Optional Fields -->
+      <q-input v-model="local.phone" label="Telefone" outlined dense class="q-mt-sm" />
+
+      <!-- Address Fields -->
+      <div class="row q-col-gutter-md q-mt-xs">
+        <q-input v-model="local.address" label="Endereço" outlined dense class="col-8" />
+        <q-input v-model="local.addressNumber" label="Número" outlined dense class="col-4" />
+      </div>
+
+      <div class="row q-col-gutter-md q-mt-xs">
+        <q-select
+          v-model="local.state"
+          :options="estados"
+          label="Estado"
+          outlined
+          dense
+          class="col-3"
+          emit-value
+          map-options
+          @update:model-value="local.city = ''"
+        />
+        <q-select
+          v-model="local.city"
+          :options="availableCities"
+          label="Cidade"
+          outlined
+          dense
+          class="col-6"
+          :disable="!local.state"
+          emit-value
+          map-options
+        />
+        <q-input v-model="local.zipCode" label="CEP" outlined dense class="col-3" />
+      </div>
     </q-form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { reactive, computed, watch } from 'vue';
+import type { ClientModel } from 'components/models';
+import { brasileiraoEstados, cidades } from 'src/data/brazilianData';
 
-/**
- * FormModel describes the shape of the entire multi-step form.
- * Each property is optional because step components only manage their portion.
- */
-import type { FormModel } from 'components/models';
-
-/**
- * ClientInfo component collects client information (name and email).
- * It receives the full form state via `model` prop and emits partial updates.
- */
-const props = defineProps<{ model?: FormModel }>();
+const props = defineProps<{ model?: ClientModel }>();
 const emit = defineEmits(['update:model']);
 
-/**
- * Local reactive state mirrors the client fields from props.
- * This allows two-way binding on inputs without directly modifying props.
- */
-const local = reactive<{ clientName: string; clientEmail: string }>({
+const local = reactive<Partial<ClientModel>>({
   clientName: props.model?.clientName ?? '',
   clientEmail: props.model?.clientEmail ?? '',
+  phone: props.model?.phone ?? '',
+  address: props.model?.address ?? '',
+  addressNumber: props.model?.addressNumber ?? '',
+  city: props.model?.city ?? '',
+  state: props.model?.state ?? '',
+  zipCode: props.model?.zipCode ?? '',
+  CPF: props.model?.CPF ?? '',
 });
 
-/**
- * Watch for changes in local state and emit updates to parent.
- * The parent merges these updates into the full form object.
- * This keeps the form state centralized while allowing isolated input management.
- */
+// States list for the dropdown
+const estados = brasileiraoEstados;
+
+// Computed property that returns cities for the selected state
+const availableCities = computed(() => {
+  return local.state ? cidades[local.state] || [] : [];
+});
+
 watch(local, () => emit('update:model', { ...(props.model || {}), ...local }), { deep: true });
 </script>
 
