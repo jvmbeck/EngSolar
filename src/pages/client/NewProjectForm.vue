@@ -44,6 +44,9 @@ import ClientInfo from 'components/project-form-steps/ClientInfo.vue';
 import ProjectInfo from 'components/project-form-steps/ProjectInfo.vue';
 import FileUploads from 'components/project-form-steps/FileUploads.vue';
 import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/models';
+import { useProjectStore } from 'src/stores/project-store';
+
+const projectStore = useProjectStore();
 
 /** Track the current step in the wizard ('1', '2', or '3') as a string to match q-step names */
 const step = ref<string>('1');
@@ -133,7 +136,7 @@ function nextStep() {
 /**
  * Submit the full form data.
  */
-function submit() {
+async function submit() {
   // assemble same payload as before using the split models
   const fd = new FormData();
   fd.append('clientName', client.clientName);
@@ -147,6 +150,15 @@ function submit() {
   }
 
   console.log('Submitting:', { client, project, files: uploadFiles });
+
+  try {
+    const clientId = await projectStore.submitClientForm(client);
+    // Now, create a project linked to this clientId
+    console.log('Client created:', clientId);
+  } catch (err) {
+    console.log(err);
+    console.error('Submission failed:', projectStore.submitError);
+  }
 }
 </script>
 
