@@ -10,15 +10,15 @@
       <q-card-section>
         <q-stepper v-model="step" flat animated>
           <q-step name="1" title="Cliente" icon="person">
-            <client-info :model="form" @update:model="updateModel" />
+            <client-info :model="client" @update:model="updateModel" />
           </q-step>
 
           <q-step name="2" title="Projeto" icon="folder">
-            <project-info :model="form" @update:model="updateModel" />
+            <project-info :model="project" @update:model="updateModel" />
           </q-step>
 
           <q-step name="3" title="Arquivos" icon="upload_file">
-            <file-uploads :model="form" @update:model="updateModel" />
+            <file-uploads :model="uploadFiles" @update:model="updateModel" />
           </q-step>
         </q-stepper>
       </q-card-section>
@@ -43,7 +43,7 @@ import { reactive, ref } from 'vue';
 import ClientInfo from 'components/project-form-steps/ClientInfo.vue';
 import ProjectInfo from 'components/project-form-steps/ProjectInfo.vue';
 import FileUploads from 'components/project-form-steps/FileUploads.vue';
-import type { FormModel } from 'components/models';
+import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/models';
 
 /** Track the current step in the wizard ('1', '2', or '3') as a string to match q-step names */
 const step = ref<string>('1');
@@ -52,21 +52,56 @@ const step = ref<string>('1');
  * The main form state object holds all data entered across all three steps.
  * This allows child components to access the full form state and submit everything at once.
  */
-const form = reactive<FormModel>({
+const client = reactive<ClientModel>({
   clientName: '',
   clientEmail: '',
+  phone: '',
+  address: '',
+  addressNumber: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  CPF: '',
+});
+
+const project = reactive<ProjectModel>({
   projectName: '',
   projectDesc: '',
-  files: [],
+  clientId: '',
+  inverterBrand: '',
+  inverterPower: '',
+  numberOfInverters: undefined,
+  panelBrand: '',
+  panelPower: '',
+  numberOfPanels: undefined,
+  systemSizeKW: undefined,
+});
+
+const uploadFiles: ProjectFilesModel = reactive({
+  sitePlan: null,
+  permit: null,
+  contract: null,
+  other: null,
 });
 
 /**
  * Update the form state when child components emit changes.
- * This merges partial updates from step components into the full form object.
- * @param updated - Partial form data to merge into the form
+ * This merges partial updates from step components into the appropriate model.
+ * @param updated - Partial form data to merge into the appropriate model
  */
-function updateModel(updated: Partial<FormModel>) {
-  Object.assign(form, updated);
+function updateModel(updated: Record<string, unknown>) {
+  if ('sitePlan' in updated || 'permit' in updated || 'contract' in updated || 'other' in updated) {
+    Object.assign(uploadFiles, updated as Partial<ProjectFilesModel>);
+    return;
+  }
+  if ('clientName' in updated || 'clientEmail' in updated) {
+    Object.assign(client, updated as Partial<ClientModel>);
+    return;
+  }
+  if ('projectName' in updated || 'projectDesc' in updated) {
+    Object.assign(project, updated as Partial<ProjectModel>);
+    return;
+  }
 }
 
 /**
@@ -78,8 +113,8 @@ function updateModel(updated: Partial<FormModel>) {
  * @returns true if the step is valid, false otherwise
  */
 function validateStep(n: number) {
-  if (n === 1) return !!form.clientName && !!form.clientEmail;
-  if (n === 2) return !!form.projectName;
+  if (n === 1) return !!client.clientName && !!client.clientEmail;
+  if (n === 2) return !!project.projectName;
   return true;
 }
 
@@ -99,7 +134,19 @@ function nextStep() {
  * Submit the full form data.
  */
 function submit() {
-  console.log(form);
+  // assemble same payload as before using the split models
+  const fd = new FormData();
+  fd.append('clientName', client.clientName);
+  fd.append('clientEmail', client.clientEmail);
+  fd.append('projectName', project.projectName);
+  fd.append('projectDesc', project.projectDesc || '');
+  const slots = ['sitePlan', 'permit', 'contract', 'other'] as const;
+  for (const s of slots) {
+    const f = uploadFiles[s as keyof typeof uploadFiles];
+    if (f) fd.append(s, f);
+  }
+
+  console.log('Submitting:', { client, project, files: uploadFiles });
 }
 </script>
 
