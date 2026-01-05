@@ -1,54 +1,69 @@
 <template>
   <div>
-    <q-file v-model="filesLocal" label="Upload files" multiple use-chips class="q-mb-sm" />
+    <div class="row q-gutter-sm">
+      <div class="col-12 col-md-6">
+        <SingleFilePicker v-model:modelValue="local.sitePlan" label="Site plan" />
+      </div>
+      <div class="col-12 col-md-6">
+        <SingleFilePicker v-model:modelValue="local.permit" label="Permit" />
+      </div>
+      <div class="col-12 col-md-6">
+        <SingleFilePicker v-model:modelValue="local.contract" label="Contract" />
+      </div>
+      <div class="col-12 col-md-6">
+        <SingleFilePicker v-model:modelValue="local.other" label="Other" />
+      </div>
+    </div>
 
-    <div v-if="filesLocal && filesLocal.length">
-      <div v-for="(f, i) in filesLocal" :key="i" class="row items-center q-py-xs">
-        <div class="col">{{ f.name }}</div>
-        <q-btn dense flat icon="close" @click="remove(i)" />
+    <div class="q-mt-sm">
+      <div v-for="s in slots" :key="s" class="row items-center q-py-xs">
+        <div class="col">
+          <strong>{{ slotLabels[s] }}:</strong>
+          <span v-if="local[s]"> {{ (local[s] as File).name }} </span>
+          <span v-else class="text-grey">No file selected</span>
+        </div>
+        <q-btn dense flat icon="close" @click="clearSlot(s)" v-if="local[s]" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
+import SingleFilePicker from 'components/SingleFilePicker.vue';
+import type { ProjectFilesModel } from 'components/models';
 
-/**
- * FormModel describes the shape of the entire multi-step form.
- * Each property is optional because step components only manage their portion.
- */
-import type { FormModel } from 'components/models';
-
-/**
- * FileUploads component manages file selection and removal.
- * It receives the full form state via `model` prop and emits partial updates.
- */
-const props = defineProps<{ model?: FormModel }>();
+const props = defineProps<{ model?: Partial<ProjectFilesModel> }>();
 const emit = defineEmits(['update:model']);
 
-/**
- * Local ref holds the list of uploaded files.
- * We clone the array from props to ensure reactivity on changes.
- */
-const filesLocal = ref<File[]>(props.model?.files ? [...props.model.files] : []);
+const slots = ['sitePlan', 'permit', 'contract', 'other'] as const;
 
-/**
- * Watch for changes in filesLocal and emit updates to parent.
- * The parent merges these updates into the full form object.
- * This keeps the form state centralized while allowing isolated file management.
- */
-watch(filesLocal, () => {
-  emit('update:model', { ...(props.model || {}), files: filesLocal.value });
+type Slot = (typeof slots)[number];
+
+const local = reactive<Record<Slot, File | null>>({
+  sitePlan: props.model?.sitePlan ?? null,
+  permit: props.model?.permit ?? null,
+  contract: props.model?.contract ?? null,
+  other: props.model?.other ?? null,
 });
 
-/**
- * Remove a file from the list by index.
- * This is called when the user clicks the close button next to a file.
- * @param i - The index of the file to remove
- */
-function remove(i: number) {
-  filesLocal.value.splice(i, 1);
+const slotLabels: Record<Slot, string> = {
+  sitePlan: 'Site plan',
+  permit: 'Permit',
+  contract: 'Contract',
+  other: 'Other',
+};
+
+watch(
+  () => ({ ...local }),
+  (v) => {
+    emit('update:model', { ...(props.model || {}), ...v } as ProjectFilesModel);
+  },
+  { deep: true },
+);
+
+function clearSlot(k: Slot) {
+  local[k] = null;
 }
 </script>
 
