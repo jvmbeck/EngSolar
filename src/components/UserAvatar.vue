@@ -52,6 +52,7 @@ const userStore = useUserStore();
 async function logout() {
   try {
     await userStore.logout();
+    window.location.reload();
   } catch (error) {
     console.error(error);
   }

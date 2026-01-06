@@ -26,11 +26,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredRole: 'client' },
     children: [
       {
-        path: '',
-        component: () => import('pages/IndexPage.vue'),
-        meta: { requiresAuth: true, requiredRole: 'client' },
-      },
-      {
         path: 'clientProjects',
         component: () => import('pages/client/ClientProjects.vue'),
         meta: { requiresAuth: true, requiredRole: 'client' },
