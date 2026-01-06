@@ -34,6 +34,7 @@ export interface FileMetadataModel {
 /** ProjectModel describes the shape of the project document stored in Firestore 'projects' collection.
  */
 export interface ProjectModel {
+  id: string; // Firestore document ID
   projectName: string;
   projectDesc?: string;
   clientId: string; // Foreign key to client document
@@ -50,6 +51,9 @@ export interface ProjectModel {
   status: 'Em Planejamento' | 'Em Criação' | 'Finalizado' | 'Aguardando'; // Enum-like status
   // ...other project fields
 }
+
+// Before saving (form data)
+export type NewProjectModel = Omit<ProjectModel, 'id'>;
 
 /**
  * Form model for uploading files during project creation
