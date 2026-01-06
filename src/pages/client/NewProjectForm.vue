@@ -43,12 +43,13 @@ import { reactive, ref } from 'vue';
 import ClientInfo from 'components/project-form-steps/ClientInfo.vue';
 import ProjectInfo from 'components/project-form-steps/ProjectInfo.vue';
 import FileUploads from 'components/project-form-steps/FileUploads.vue';
-import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/models';
+import type { ClientModel, NewProjectModel, ProjectFilesModel } from 'components/models';
 import { useProjectStore } from 'src/stores/project-store';
 import { useQuasar } from 'quasar';
-import { serverTimestamp } from 'firebase/firestore';
 import { Loading, QSpinnerGears } from 'quasar';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const $q = useQuasar();
 
 const projectStore = useProjectStore();
@@ -72,7 +73,7 @@ const client = reactive<ClientModel>({
   CPF: '',
 });
 
-const project = reactive<ProjectModel>({
+const project = reactive<NewProjectModel>({
   projectName: '',
   projectDesc: '',
   clientId: '',
@@ -84,8 +85,8 @@ const project = reactive<ProjectModel>({
   panelPower: '',
   numberOfPanels: undefined,
   systemSizeKW: undefined,
-  createdAt: serverTimestamp(),
-  updatedAt: serverTimestamp(),
+  createdAt: '',
+  updatedAt: '',
   status: 'Em Planejamento',
 });
 
@@ -111,7 +112,7 @@ function updateModel(updated: Record<string, unknown>) {
     return;
   }
   if ('projectName' in updated || 'projectDesc' in updated) {
-    Object.assign(project, updated as Partial<ProjectModel>);
+    Object.assign(project, updated as Partial<NewProjectModel>);
     return;
   }
 }
@@ -150,23 +151,18 @@ async function submit() {
   console.log('Submitting:', { client, project, files: uploadFiles });
 
   try {
-    projectStore.submitting = true;
     Loading.show({
       spinner: QSpinnerGears,
       message: 'Enviando dados...',
     });
-
-    // First, create the client and get its ID
-    const clientId = await projectStore.submitClientForm(client);
-    // Now, create a project linked to this clientId
-    console.log('Client created:', clientId);
-    project.clientId = clientId;
-    const projectId = await projectStore.submitProjectForm(project, uploadFiles);
-    console.log('Project created:', projectId);
+    // create client and project documents
+    const returnedProject = await projectStore.submitProjectForm(client, project, uploadFiles);
+    console.log('Project created:', returnedProject.id);
     $q.notify({
       type: 'positive',
       message: 'Projeto enviado com sucesso!',
     });
+    await router.push({ name: 'project-details', params: { id: returnedProject.id } });
   } catch (err) {
     $q.notify({
       type: 'negative',
@@ -175,7 +171,6 @@ async function submit() {
     console.log(err);
     console.error('Submission failed:', projectStore.submitError);
   } finally {
-    projectStore.submitting = false;
     Loading.hide();
   }
 }
