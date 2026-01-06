@@ -46,13 +46,11 @@ import FileUploads from 'components/project-form-steps/FileUploads.vue';
 import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/models';
 import { useProjectStore } from 'src/stores/project-store';
 import { useQuasar } from 'quasar';
-import { useUserStore } from 'src/stores/user-store';
 import { serverTimestamp } from 'firebase/firestore';
 
 const $q = useQuasar();
 
 const projectStore = useProjectStore();
-const userStore = useUserStore();
 
 /** Track the current step in the wizard ('1', '2', or '3') as a string to match q-step names */
 const step = ref<string>('1');
@@ -77,7 +75,7 @@ const project = reactive<ProjectModel>({
   projectName: '',
   projectDesc: '',
   clientId: '',
-  userId: userStore.user?.uid || '',
+  userId: '',
   inverterBrand: '',
   inverterPower: '',
   numberOfInverters: undefined,

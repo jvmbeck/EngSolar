@@ -154,11 +154,12 @@ export const useProjectStore = defineStore('project', () => {
     submitError.value = null;
 
     try {
-      // create project document
-      const projectId = await createProject(projectData);
-
       // uploader id
       const userId = uploaderId || auth.currentUser?.uid || 'unknown';
+
+      // create project document
+      projectData.userId = userId;
+      const projectId = await createProject(projectData);
 
       // helper to upload a single file and create metadata
       async function handleFileUpload(type: FileMetadataModel['type'], file: File) {
