@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/client/NewProjectForm.vue'),
         meta: { requiresAuth: true, requiredRole: 'client' },
       },
+      {
+        path: 'projects/:id',
+        name: 'project-details',
+        component: () => import('pages/client/ProjectDetails.vue'),
+        props: true, // 👈 passes route param `id` as a prop
+      },
       // Add more client-only pages here
     ],
   },
