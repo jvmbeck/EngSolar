@@ -83,12 +83,12 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
-import type { ProjectModel } from 'components/models';
+import type { NewProjectModel } from 'components/models';
 
-const props = defineProps<{ model?: ProjectModel }>();
+const props = defineProps<{ model?: NewProjectModel }>();
 const emit = defineEmits(['update:model']);
 
-const local = reactive<Partial<ProjectModel>>({
+const local = reactive<Partial<NewProjectModel>>({
   projectName: props.model?.projectName ?? '',
   projectDesc: props.model?.projectDesc ?? '',
   systemSizeKW: props.model?.systemSizeKW ?? undefined,
