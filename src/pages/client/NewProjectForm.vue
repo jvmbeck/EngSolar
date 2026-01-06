@@ -47,6 +47,7 @@ import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/mo
 import { useProjectStore } from 'src/stores/project-store';
 import { useQuasar } from 'quasar';
 import { serverTimestamp } from 'firebase/firestore';
+import { Loading, QSpinnerDots } from 'quasar';
 
 const $q = useQuasar();
 
@@ -150,6 +151,11 @@ async function submit() {
 
   try {
     projectStore.submitting = true;
+    Loading.show({
+      spinner: QSpinnerDots,
+      message: 'Enviando dados...',
+    });
+
     // First, create the client and get its ID
     const clientId = await projectStore.submitClientForm(client);
     // Now, create a project linked to this clientId
@@ -168,6 +174,9 @@ async function submit() {
     });
     console.log(err);
     console.error('Submission failed:', projectStore.submitError);
+  } finally {
+    projectStore.submitting = false;
+    Loading.hide();
   }
 }
 </script>
