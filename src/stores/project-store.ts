@@ -1,7 +1,17 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ClientModel, ProjectModel, ProjectFilesModel } from 'src/components/models';
+import type {
+  ClientModel,
+  ProjectModel,
+  ProjectFilesModel,
+  FileMetadataModel,
+} from 'src/components/models';
 import { getClientById, createClient } from 'src/services/clients/index';
+import { createProject } from 'src/services/projects/index';
+import { createFileMetadata } from 'src/services/files/index';
+import { storage, auth } from 'src/key/configKey';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { serverTimestamp } from 'firebase/firestore';
 
 export const useProjectStore = defineStore('project', () => {
   // Project form data (current form being edited)
@@ -127,6 +137,73 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  /**
+   * Submit a project and its files: create project doc, upload files to Storage,
+   * and create file metadata records in Firestore.
+   * @param projectData - Full ProjectModel (must include clientId)
+   * @param files - ProjectFilesModel with File objects
+   * @param uploaderId - optional user id of uploader (falls back to current auth user)
+   * @returns projectId
+   */
+  async function submitProjectForm(
+    projectData: ProjectModel,
+    files: Partial<ProjectFilesModel>,
+    uploaderId?: string,
+  ): Promise<string> {
+    submitting.value = true;
+    submitError.value = null;
+
+    try {
+      // create project document
+      const projectId = await createProject(projectData);
+
+      // uploader id
+      const userId = uploaderId || auth.currentUser?.uid || 'unknown';
+
+      // helper to upload a single file and create metadata
+      async function handleFileUpload(type: FileMetadataModel['type'], file: File) {
+        const nameSafe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `projects/${projectId}/${type}_${Date.now()}_${nameSafe}`;
+        const sRef = storageRef(storage, path);
+        await uploadBytes(sRef, file);
+        const url = await getDownloadURL(sRef);
+
+        const meta: FileMetadataModel = {
+          projectId,
+          type,
+          name: file.name,
+          storagePath: path,
+          downloadUrl: url,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          uploadedBy: userId,
+          uploadedAt: serverTimestamp(),
+          version: 1,
+        };
+
+        await createFileMetadata(meta);
+      }
+
+      // iterate known slots
+      const slots: Array<keyof ProjectFilesModel> = ['sitePlan', 'permit', 'contract', 'other'];
+      for (const s of slots) {
+        const f = files[s];
+        if (f instanceof File) {
+          // type must match our enum mapping
+          const type = s as FileMetadataModel['type'];
+          await handleFileUpload(type, f);
+        }
+      }
+
+      return projectId;
+    } catch (err) {
+      submitError.value = err instanceof Error ? err.message : 'Failed to submit project';
+      throw err;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
   return {
     // Current form state
     currentClient,
@@ -152,5 +229,6 @@ export const useProjectStore = defineStore('project', () => {
     clearClientCache,
     getOrLoadClient,
     submitClientForm,
+    submitProjectForm,
   };
 });
