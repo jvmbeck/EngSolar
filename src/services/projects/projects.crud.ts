@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   serverTimestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from 'src/key/configKey';
 import type { NewProjectModel, ProjectModel } from 'src/components/models';
@@ -55,12 +56,37 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 /**
- * Query projects by clientId
+ * Fetch all projects belonging to a specific user.
+ * @param userId The UID of the user
+ * @returns Promise<ProjectModel[]>
  */
-export async function getProjectsByClientId(
-  clientId: string,
-): Promise<(NewProjectModel & { id: string })[]> {
-  const q = query(collection(db, 'projects'), where('clientId', '==', clientId));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...(d.data() as NewProjectModel), id: d.id }));
+export async function listProjectsByUser(userId: string): Promise<ProjectModel[]> {
+  const q = query(collection(db, 'projects'), where('userId', '==', userId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id, // Firestore document ID
+    ...(doc.data() as Omit<ProjectModel, 'id'>), // merge with document fields
+  }));
+}
+
+/**
+ * Subscribe to all projects for a given user.
+ * Returns an unsubscribe function.
+ */
+export function subscribeProjectsByUser(
+  userId: string,
+  callback: (projects: ProjectModel[]) => void,
+): () => void {
+  const q = query(collection(db, 'projects'), where('userId', '==', userId));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const projects = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<ProjectModel, 'id'>),
+    }));
+    callback(projects);
+  });
+
+  return unsubscribe;
 }

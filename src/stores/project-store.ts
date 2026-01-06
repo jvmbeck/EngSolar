@@ -8,7 +8,11 @@ import type {
   FileMetadataModel,
 } from 'src/components/models';
 import { getClientById, createClient } from 'src/services/clients/index';
-import { createProject } from 'src/services/projects/index';
+import {
+  createProject,
+  listProjectsByUser,
+  subscribeProjectsByUser,
+} from 'src/services/projects/index';
 import { createFileMetadata } from 'src/services/files/index';
 import { storage, auth } from 'src/key/configKey';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -20,6 +24,9 @@ export const useProjectStore = defineStore('project', () => {
   const currentFormProject = ref<Partial<NewProjectModel> | null>(null);
   const currentFormFiles = ref<Partial<ProjectFilesModel> | null>(null);
 
+  // Projects list and current selected project
+  const loading = ref(false);
+  const error = ref<string | null>(null);
   const projects = ref<ProjectModel[]>([]);
   const currentProject = ref<ProjectModel | null>(null);
 
@@ -37,6 +44,22 @@ export const useProjectStore = defineStore('project', () => {
   const hasFormData = computed(
     () => !!currentFormClient.value || !!currentFormProject.value || !!currentFormFiles.value,
   );
+
+  async function fetchProjects(): Promise<void> {
+    // Avoid re-fetching if already loaded
+    if (projects.value.length > 0) return;
+    loading.value = true;
+    error.value = null;
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error('No user logged in');
+      projects.value = await listProjectsByUser(uid);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load projects';
+    } finally {
+      loading.value = false;
+    }
+  }
 
   /**
    * Lazy-load a client by ID. Only fetches from Firestore if not already cached.
@@ -141,11 +164,13 @@ export const useProjectStore = defineStore('project', () => {
       const clientId = await createClient(clientData);
       projectData.clientId = clientId;
       lastSubmittedClientId.value = clientId;
+      console.log('SUBMIT FLOW\nCreated Client.');
 
       // Cache the newly created client
       loadedClients.value.set(clientId, clientData);
       // create project document
       const project = await createProject(projectData);
+      console.log('SUBMIT FLOW\nCreated Project.');
 
       // helper to upload a single file and create metadata
       async function handleFileUpload(type: FileMetadataModel['type'], file: File) {
@@ -181,9 +206,9 @@ export const useProjectStore = defineStore('project', () => {
           await handleFileUpload(type, f);
         }
       }
+      console.log('SUBMIT FLOW\nCreated files.');
 
       currentProject.value = project;
-      projects.value.push(project);
 
       return project;
     } catch (err) {
@@ -191,6 +216,30 @@ export const useProjectStore = defineStore('project', () => {
       return {} as ProjectModel;
     } finally {
       submitting.value = false;
+    }
+  }
+
+  let unsubscribeProjects: (() => void) | null = null;
+
+  function startProjectsListener() {
+    if (unsubscribeProjects) return; // already listening
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      error.value = 'No user logged in';
+      return;
+    }
+
+    loading.value = true;
+    unsubscribeProjects = subscribeProjectsByUser(uid, (newProjects) => {
+      projects.value = newProjects;
+      loading.value = false;
+    });
+  }
+
+  function stopProjectsListener() {
+    if (unsubscribeProjects) {
+      unsubscribeProjects();
+      unsubscribeProjects = null;
     }
   }
 
@@ -202,6 +251,8 @@ export const useProjectStore = defineStore('project', () => {
     hasFormData,
 
     // Projects
+    loading,
+    error,
     projects,
     currentProject,
 
@@ -216,6 +267,7 @@ export const useProjectStore = defineStore('project', () => {
     lastSubmittedClientId,
 
     // Actions
+    fetchProjects,
     loadClientById,
     getCachedClient,
     setFormData,
@@ -223,5 +275,9 @@ export const useProjectStore = defineStore('project', () => {
     clearClientCache,
     getOrLoadClient,
     submitProjectForm,
+
+    // Real-time listeners
+    startProjectsListener,
+    stopProjectsListener,
   };
 });

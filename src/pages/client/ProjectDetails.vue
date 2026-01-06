@@ -25,20 +25,23 @@ const projectStore = useProjectStore();
 const project = ref<ProjectModel | null>(null);
 
 onMounted(async () => {
-  // If store already has the project, reuse it
-  if (projectStore.currentProject && projectStore.currentProject.id === route.params.id) {
-    project.value = projectStore.currentProject;
-    console.log('Store had project stored already!');
+  const id = route.params.id as string;
 
+  // try to find in store first
+  const cached = projectStore.projects.find((p) => p.id === id);
+  if (cached) {
+    console.log('value was cached. retrieving from store.');
+    project.value = cached;
+    projectStore.currentProject = cached;
     return;
   }
-  console.log('Had to fetch from firestore!');
-
-  // Otherwise fetch from Firestore
-  const snap = await getDoc(doc(db, 'projects', route.params.id as string));
+  console.log('value not cached. fetching from Firestore.');
+  // fallback: fetch from Firestore if not cached
+  const snap = await getDoc(doc(db, 'projects', id));
   if (snap.exists()) {
     project.value = { id: snap.id, ...(snap.data() as Omit<ProjectModel, 'id'>) };
-    projectStore.currentProject = project.value; // keep store in sync
+    projectStore.currentProject = project.value;
+    projectStore.projects.push(project.value); // keep cache updated
   }
 });
 </script>
