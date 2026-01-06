@@ -45,8 +45,14 @@ import ProjectInfo from 'components/project-form-steps/ProjectInfo.vue';
 import FileUploads from 'components/project-form-steps/FileUploads.vue';
 import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/models';
 import { useProjectStore } from 'src/stores/project-store';
+import { useQuasar } from 'quasar';
+import { useUserStore } from 'src/stores/user-store';
+import { serverTimestamp } from 'firebase/firestore';
+
+const $q = useQuasar();
 
 const projectStore = useProjectStore();
+const userStore = useUserStore();
 
 /** Track the current step in the wizard ('1', '2', or '3') as a string to match q-step names */
 const step = ref<string>('1');
@@ -71,6 +77,7 @@ const project = reactive<ProjectModel>({
   projectName: '',
   projectDesc: '',
   clientId: '',
+  userId: userStore.user?.uid || '',
   inverterBrand: '',
   inverterPower: '',
   numberOfInverters: undefined,
@@ -78,6 +85,9 @@ const project = reactive<ProjectModel>({
   panelPower: '',
   numberOfPanels: undefined,
   systemSizeKW: undefined,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  status: 'Em Planejamento',
 });
 
 const uploadFiles: ProjectFilesModel = reactive({
@@ -138,24 +148,26 @@ function nextStep() {
  */
 async function submit() {
   // assemble same payload as before using the split models
-  const fd = new FormData();
-  fd.append('clientName', client.clientName);
-  fd.append('clientEmail', client.clientEmail);
-  fd.append('projectName', project.projectName);
-  fd.append('projectDesc', project.projectDesc || '');
-  const slots = ['sitePlan', 'permit', 'contract', 'other'] as const;
-  for (const s of slots) {
-    const f = uploadFiles[s as keyof typeof uploadFiles];
-    if (f) fd.append(s, f);
-  }
-
   console.log('Submitting:', { client, project, files: uploadFiles });
 
   try {
+    projectStore.submitting = true;
+    // First, create the client and get its ID
     const clientId = await projectStore.submitClientForm(client);
     // Now, create a project linked to this clientId
     console.log('Client created:', clientId);
+    project.clientId = clientId;
+    const projectId = await projectStore.submitProjectForm(project, uploadFiles);
+    console.log('Project created:', projectId);
+    $q.notify({
+      type: 'positive',
+      message: 'Projeto enviado com sucesso!',
+    });
   } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: 'Falha ao enviar o projeto. Por favor, tente novamente.',
+    });
     console.log(err);
     console.error('Submission failed:', projectStore.submitError);
   }
