@@ -47,7 +47,7 @@ import type { ClientModel, ProjectModel, ProjectFilesModel } from 'components/mo
 import { useProjectStore } from 'src/stores/project-store';
 import { useQuasar } from 'quasar';
 import { serverTimestamp } from 'firebase/firestore';
-import { Loading, QSpinnerDots } from 'quasar';
+import { Loading, QSpinnerGears } from 'quasar';
 
 const $q = useQuasar();
 
@@ -152,7 +152,7 @@ async function submit() {
   try {
     projectStore.submitting = true;
     Loading.show({
-      spinner: QSpinnerDots,
+      spinner: QSpinnerGears,
       message: 'Enviando dados...',
     });
 
