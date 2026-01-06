@@ -1,6 +1,5 @@
 /**
- * FormModel describes the shape of the entire multi-step New Project Form.
- * This is the single source of truth for all form data across all three steps.
+ * ClientModel describes the shape of the client document stored in Firestore 'clients' collection.
  */
 export interface ClientModel {
   clientName: string;
@@ -15,17 +14,30 @@ export interface ClientModel {
   // ...other client fields
 }
 
-export interface FileRef {
-  name: string;
-  url: string;
-  path?: string; // storage path
+/**
+ * File metadata record stored in Firestore 'files' collection
+ * This is a reference to a single file with metadata and foreign key to project
+ */
+export interface FileMetadataModel {
+  projectId: string; // Foreign key to project
+  type: 'sitePlan' | 'permit' | 'contract' | 'other'; // Enum-like categorization
+  name: string; // Original filename (e.g., "contract.pdf")
+  storagePath: string; // Path in Firebase Storage (e.g., "projects/project_abc123/contract.pdf")
+  downloadUrl: string; // Public download URL from Firebase Storage
+  mimeType: string; // MIME type (e.g., "application/pdf")
+  size: number; // File size in bytes
+  uploadedBy: string; // User ID who uploaded the file
+  uploadedAt: unknown; // Firestore Timestamp
+  version: number; // Version number for tracking updates
 }
 
+/** ProjectModel describes the shape of the project document stored in Firestore 'projects' collection.
+ */
 export interface ProjectModel {
   projectName: string;
   projectDesc?: string;
-  clientId?: string; // set after client doc creation
-  files?: FileRef[]; // store URLs/paths, not raw File objects
+  clientId: string; // Foreign key to client document
+  userId: string; // Key to user
   inverterBrand?: string;
   inverterPower?: string;
   numberOfInverters?: number | undefined;
@@ -33,9 +45,17 @@ export interface ProjectModel {
   panelPower?: string;
   numberOfPanels?: number | undefined;
   systemSizeKW?: number | undefined;
+  createdAt: unknown; // Firestore Timestamp
+  updatedAt: unknown; // Firestore Timestamp
+  status: 'Em Planejamento' | 'Em Criação' | 'Finalizado' | 'Aguardando'; // Enum-like status
   // ...other project fields
 }
 
+/**
+ * Form model for uploading files during project creation
+ * This is temporary storage for File objects before uploading to Firebase Storage
+ * and creating FileMetadataModel records in Firestore
+ */
 export interface ProjectFilesModel {
   sitePlan?: File | null;
   permit?: File | null;
