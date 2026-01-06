@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import type {
   ClientModel,
   ProjectModel,
+  NewProjectModel,
   ProjectFilesModel,
   FileMetadataModel,
 } from 'src/components/models';
@@ -15,9 +16,12 @@ import { serverTimestamp } from 'firebase/firestore';
 
 export const useProjectStore = defineStore('project', () => {
   // Project form data (current form being edited)
-  const currentClient = ref<Partial<ClientModel> | null>(null);
-  const currentProject = ref<Partial<ProjectModel> | null>(null);
-  const currentFiles = ref<Partial<ProjectFilesModel> | null>(null);
+  const currentFormClient = ref<Partial<ClientModel> | null>(null);
+  const currentFormProject = ref<Partial<NewProjectModel> | null>(null);
+  const currentFormFiles = ref<Partial<ProjectFilesModel> | null>(null);
+
+  const projects = ref<ProjectModel[]>([]);
+  const currentProject = ref<ProjectModel | null>(null);
 
   // Lazy-loaded clients (only fetched when needed)
   const loadedClients = ref<Map<string, ClientModel>>(new Map());
@@ -31,7 +35,7 @@ export const useProjectStore = defineStore('project', () => {
 
   // Computed properties
   const hasFormData = computed(
-    () => !!currentClient.value || !!currentProject.value || !!currentFiles.value,
+    () => !!currentFormClient.value || !!currentFormProject.value || !!currentFormFiles.value,
   );
 
   /**
@@ -79,18 +83,18 @@ export const useProjectStore = defineStore('project', () => {
     project: Partial<ProjectModel>,
     files: Partial<ProjectFilesModel>,
   ) {
-    currentClient.value = client;
-    currentProject.value = project;
-    currentFiles.value = files;
+    currentFormClient.value = client;
+    currentFormProject.value = project;
+    currentFormFiles.value = files;
   }
 
   /**
    * Clear the current form data
    */
   function clearFormData() {
-    currentClient.value = null;
-    currentProject.value = null;
-    currentFiles.value = null;
+    currentFormClient.value = null;
+    currentFormProject.value = null;
+    currentFormFiles.value = null;
   }
 
   /**
@@ -112,32 +116,6 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   /**
-   * Submit client form data to Firestore
-   * @param clientData - The client data to submit
-   * @returns The ID of the created client document
-   * @throws Error if submission fails
-   */
-  async function submitClientForm(clientData: ClientModel): Promise<string> {
-    submitting.value = true;
-    submitError.value = null;
-
-    try {
-      const clientId = await createClient(clientData);
-      lastSubmittedClientId.value = clientId;
-
-      // Cache the newly created client
-      loadedClients.value.set(clientId, clientData);
-
-      return clientId;
-    } catch (err) {
-      submitError.value = err instanceof Error ? err.message : 'Failed to submit client form';
-      throw err;
-    } finally {
-      submitting.value = false;
-    }
-  }
-
-  /**
    * Submit a project and its files: create project doc, upload files to Storage,
    * and create file metadata records in Firestore.
    * @param projectData - Full ProjectModel (must include clientId)
@@ -146,31 +124,39 @@ export const useProjectStore = defineStore('project', () => {
    * @returns projectId
    */
   async function submitProjectForm(
-    projectData: ProjectModel,
+    clientData: ClientModel,
+    projectData: NewProjectModel,
     files: Partial<ProjectFilesModel>,
     uploaderId?: string,
-  ): Promise<string> {
+  ): Promise<ProjectModel> {
     submitting.value = true;
     submitError.value = null;
 
     try {
       // uploader id
       const userId = uploaderId || auth.currentUser?.uid || 'unknown';
-
-      // create project document
       projectData.userId = userId;
-      const projectId = await createProject(projectData);
+
+      // create client document
+      const clientId = await createClient(clientData);
+      projectData.clientId = clientId;
+      lastSubmittedClientId.value = clientId;
+
+      // Cache the newly created client
+      loadedClients.value.set(clientId, clientData);
+      // create project document
+      const project = await createProject(projectData);
 
       // helper to upload a single file and create metadata
       async function handleFileUpload(type: FileMetadataModel['type'], file: File) {
         const nameSafe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `projects/${projectId}/${type}_${Date.now()}_${nameSafe}`;
+        const path = `projects/${project.id}/${type}_${Date.now()}_${nameSafe}`;
         const sRef = storageRef(storage, path);
         await uploadBytes(sRef, file);
         const url = await getDownloadURL(sRef);
 
         const meta: FileMetadataModel = {
-          projectId,
+          projectId: project.id || '',
           type,
           name: file.name,
           storagePath: path,
@@ -196,10 +182,13 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
 
-      return projectId;
+      currentProject.value = project;
+      projects.value.push(project);
+
+      return project;
     } catch (err) {
       submitError.value = err instanceof Error ? err.message : 'Failed to submit project';
-      throw err;
+      return {} as ProjectModel;
     } finally {
       submitting.value = false;
     }
@@ -207,10 +196,14 @@ export const useProjectStore = defineStore('project', () => {
 
   return {
     // Current form state
-    currentClient,
-    currentProject,
-    currentFiles,
+    currentFormClient,
+    currentFormProject,
+    currentFormFiles,
     hasFormData,
+
+    // Projects
+    projects,
+    currentProject,
 
     // Lazy-loaded clients
     loadedClients: computed(() => new Map(loadedClients.value)),
@@ -229,7 +222,6 @@ export const useProjectStore = defineStore('project', () => {
     clearFormData,
     clearClientCache,
     getOrLoadClient,
-    submitClientForm,
     submitProjectForm,
   };
 });
