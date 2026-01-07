@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { date } from 'quasar';
-import type { ProjectModel } from './models';
+import type { ProjectModel } from './models/FormModels';
 
 const props = defineProps<{
   project: ProjectModel;

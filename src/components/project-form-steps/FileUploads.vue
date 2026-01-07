@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
 import SingleFilePicker from 'components/SingleFilePicker.vue';
-import type { ProjectFilesModel } from 'components/models';
+import type { ProjectFilesModel } from 'src/components/models/FormModels';
 
 const props = defineProps<{ model?: Partial<ProjectFilesModel> }>();
 const emit = defineEmits(['update:model']);

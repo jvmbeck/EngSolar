@@ -10,7 +10,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from 'src/key/configKey';
-import type { ClientModel } from 'src/components/models';
+import type { ClientModel } from 'src/components/models/FormModels';
 
 /**
  * Create a new client in Firestore

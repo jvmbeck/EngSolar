@@ -6,7 +6,7 @@ import type {
   NewProjectModel,
   ProjectFilesModel,
   FileMetadataModel,
-} from 'src/components/models';
+} from 'src/components/models/FormModels';
 import { getClientById, createClient } from 'src/services/clients/index';
 import {
   createProject,

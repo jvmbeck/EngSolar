@@ -12,7 +12,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from 'src/key/configKey';
-import type { NewProjectModel, ProjectModel } from 'src/components/models';
+import type { NewProjectModel, ProjectModel } from 'src/components/models/FormModels';
 
 /**
  * Create a new project document

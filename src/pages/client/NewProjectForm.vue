@@ -43,7 +43,11 @@ import { reactive, ref } from 'vue';
 import ClientInfo from 'components/project-form-steps/ClientInfo.vue';
 import ProjectInfo from 'components/project-form-steps/ProjectInfo.vue';
 import FileUploads from 'components/project-form-steps/FileUploads.vue';
-import type { ClientModel, NewProjectModel, ProjectFilesModel } from 'components/models';
+import type {
+  ClientModel,
+  NewProjectModel,
+  ProjectFilesModel,
+} from 'src/components/models/FormModels';
 import { useProjectStore } from 'src/stores/project-store';
 import { useQuasar } from 'quasar';
 import { Loading, QSpinnerGears } from 'quasar';

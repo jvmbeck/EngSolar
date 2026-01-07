@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
-import type { ClientModel } from 'components/models';
+import type { ClientModel } from 'src/components/models/FormModels';
 import { brasileiraoEstados, cidades } from 'src/data/brazilianData';
 
 const props = defineProps<{ model?: ClientModel }>();
