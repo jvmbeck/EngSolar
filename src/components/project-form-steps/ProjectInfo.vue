@@ -83,7 +83,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
-import type { NewProjectModel } from 'components/models';
+import type { NewProjectModel } from 'src/components/models/FormModels';
 
 const props = defineProps<{ model?: NewProjectModel }>();
 const emit = defineEmits(['update:model']);

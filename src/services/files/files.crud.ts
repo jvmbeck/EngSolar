@@ -1,6 +1,16 @@
-import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
 import { db } from 'src/key/configKey';
-import type { FileMetadataModel } from 'src/components/models';
+import type { FileMetadataModel, FileModel } from 'src/components/models/FormModels';
 
 /**
  * Create a file metadata record
@@ -23,7 +33,10 @@ export async function getFileById(fileId: string): Promise<FileMetadataModel | n
 /**
  * Update a file metadata record
  */
-export async function updateFile(fileId: string, updates: Partial<FileMetadataModel>): Promise<void> {
+export async function updateFile(
+  fileId: string,
+  updates: Partial<FileMetadataModel>,
+): Promise<void> {
   const docRef = doc(db, 'files', fileId);
   await updateDoc(docRef, updates);
 }
@@ -39,17 +52,28 @@ export async function deleteFile(fileId: string): Promise<void> {
 /**
  * Get all files for a project
  */
-export async function getFilesByProjectId(projectId: string): Promise<(FileMetadataModel & { id: string })[]> {
-  const q = query(collection(db, 'files'), where('projectId', '==', projectId));
+export async function getFilesByProjectId(projectId: string): Promise<FileModel[]> {
+  const col = collection(db, 'files');
+  const q = query(col, where('projectId', '==', projectId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ ...(d.data() as FileMetadataModel), id: d.id }));
+  return snap.docs.map((d) => ({
+    id: d.id, // this is the Firestore doc ID
+    ...(d.data() as Omit<FileModel, 'id'>),
+  }));
 }
 
 /**
  * Get files for a project filtered by type
  */
-export async function getFilesByProjectIdAndType(projectId: string, type: FileMetadataModel['type']): Promise<(FileMetadataModel & { id: string })[]> {
-  const q = query(collection(db, 'files'), where('projectId', '==', projectId), where('type', '==', type));
+export async function getFilesByProjectIdAndType(
+  projectId: string,
+  type: FileMetadataModel['type'],
+): Promise<(FileMetadataModel & { id: string })[]> {
+  const q = query(
+    collection(db, 'files'),
+    where('projectId', '==', projectId),
+    where('type', '==', type),
+  );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ ...(d.data() as FileMetadataModel), id: d.id }));
 }

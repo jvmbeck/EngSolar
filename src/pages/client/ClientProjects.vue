@@ -26,7 +26,7 @@
 import { useRouter } from 'vue-router';
 import { useProjectStore } from 'src/stores/project-store';
 import ProjectCard from 'src/components/ProjectCard.vue';
-import type { ProjectModel } from 'src/components/models';
+import type { ProjectModel } from 'src/components/models/FormModels';
 
 const router = useRouter();
 const projectStore = useProjectStore();

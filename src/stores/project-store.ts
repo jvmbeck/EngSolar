@@ -6,14 +6,15 @@ import type {
   NewProjectModel,
   ProjectFilesModel,
   FileMetadataModel,
-} from 'src/components/models';
+  FileModel,
+} from 'src/components/models/FormModels';
 import { getClientById, createClient } from 'src/services/clients/index';
 import {
   createProject,
   listProjectsByUser,
   subscribeProjectsByUser,
 } from 'src/services/projects/index';
-import { createFileMetadata } from 'src/services/files/index';
+import { createFileMetadata, getFilesByProjectId } from 'src/services/files/index';
 import { storage, auth } from 'src/key/configKey';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { serverTimestamp } from 'firebase/firestore';
@@ -24,16 +25,20 @@ export const useProjectStore = defineStore('project', () => {
   const currentFormProject = ref<Partial<NewProjectModel> | null>(null);
   const currentFormFiles = ref<Partial<ProjectFilesModel> | null>(null);
 
-  // Projects list and current selected project
+  // Projects list
   const loading = ref(false);
   const error = ref<string | null>(null);
   const projects = ref<ProjectModel[]>([]);
-  const currentProject = ref<ProjectModel | null>(null);
 
   // Lazy-loaded clients (only fetched when needed)
   const loadedClients = ref<Map<string, ClientModel>>(new Map());
   const clientLoading = ref<string | null>(null);
   const clientError = ref<string | null>(null);
+
+  // Lazy-load files for a project
+  const loadedFiles = ref<Map<string, FileModel[]>>(new Map());
+  const fileLoading = ref<string | null>(null);
+  const fileError = ref<string | null>(null);
 
   // Form submission state
   const submitting = ref(false);
@@ -69,6 +74,8 @@ export const useProjectStore = defineStore('project', () => {
   async function loadClientById(clientId: string): Promise<ClientModel | null> {
     // Return cached client if already loaded
     if (loadedClients.value.has(clientId)) {
+      console.log('Client was already cached. Returning Loaded');
+
       return loadedClients.value.get(clientId) || null;
     }
 
@@ -76,6 +83,8 @@ export const useProjectStore = defineStore('project', () => {
     clientError.value = null;
 
     try {
+      console.log('Client was not in cache. Fetching from Firestore');
+
       const client = await getClientById(clientId);
       if (client) {
         loadedClients.value.set(clientId, client);
@@ -96,6 +105,36 @@ export const useProjectStore = defineStore('project', () => {
    */
   function getCachedClient(clientId: string): ClientModel | null {
     return loadedClients.value.get(clientId) || null;
+  }
+
+  /**
+   * Lazy-load files for a project. Only fetches if not already cached.
+   */
+  async function loadFilesByProject(projectId: string): Promise<FileModel[]> {
+    if (loadedFiles.value.has(projectId)) {
+      return loadedFiles.value.get(projectId) || [];
+    }
+
+    fileLoading.value = projectId;
+    fileError.value = null;
+
+    try {
+      const files = await getFilesByProjectId(projectId);
+      loadedFiles.value.set(projectId, files);
+      return files;
+    } catch (err) {
+      fileError.value = err instanceof Error ? err.message : 'Failed to load files';
+      return [];
+    } finally {
+      fileLoading.value = null;
+    }
+  }
+
+  /**
+   * Get cached files without fetching
+   */
+  function getCachedFiles(projectId: string): FileModel[] {
+    return loadedFiles.value.get(projectId) || [];
   }
 
   /**
@@ -125,17 +164,6 @@ export const useProjectStore = defineStore('project', () => {
    */
   function clearClientCache() {
     loadedClients.value.clear();
-  }
-
-  /**
-   * Get a client from cache or lazy-load it
-   * @param clientId - The ID of the client
-   * @returns The client data or null if not found
-   */
-  async function getOrLoadClient(clientId: string): Promise<ClientModel | null> {
-    const cached = getCachedClient(clientId);
-    if (cached) return cached;
-    return loadClientById(clientId);
   }
 
   /**
@@ -208,8 +236,6 @@ export const useProjectStore = defineStore('project', () => {
       }
       console.log('SUBMIT FLOW\nCreated files.');
 
-      currentProject.value = project;
-
       return project;
     } catch (err) {
       submitError.value = err instanceof Error ? err.message : 'Failed to submit project';
@@ -254,12 +280,16 @@ export const useProjectStore = defineStore('project', () => {
     loading,
     error,
     projects,
-    currentProject,
 
     // Lazy-loaded clients
     loadedClients: computed(() => new Map(loadedClients.value)),
     clientLoading,
     clientError,
+
+    // Lazy-loaded files
+    loadedFiles: computed(() => new Map(loadedFiles.value)),
+    fileLoading,
+    fileError,
 
     // Submission state
     submitting,
@@ -270,10 +300,11 @@ export const useProjectStore = defineStore('project', () => {
     fetchProjects,
     loadClientById,
     getCachedClient,
+    loadFilesByProject,
+    getCachedFiles,
     setFormData,
     clearFormData,
     clearClientCache,
-    getOrLoadClient,
     submitProjectForm,
 
     // Real-time listeners

@@ -31,6 +31,11 @@ export interface FileMetadataModel {
   version: number; // Version number for tracking updates
 }
 
+// Extended model that includes Firestore doc ID
+export interface FileModel extends FileMetadataModel {
+  id: string;
+}
+
 /** ProjectModel describes the shape of the project document stored in Firestore 'projects' collection.
  */
 export interface ProjectModel {
